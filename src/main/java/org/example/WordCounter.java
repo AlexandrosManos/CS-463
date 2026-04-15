@@ -3,10 +3,7 @@ package org.example;
 import gr.uoc.csd.hy463.NXMLFileReader;
 import mitos.stemmer.Stemmer;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -72,6 +69,7 @@ public class WordCounter {
         } else {
             System.out.println("Collection Mode");
             processCollection(collectionPath);
+            VocabularyFile();
         }
     }
 
@@ -209,6 +207,40 @@ public class WordCounter {
             System.err.println("Error reading resource: " + resourcePath);
         }
     }
+    // Create directory and write vocabulary file
+    private void VocabularyFile() {
+        File dir = new File("CollectionIndex");
+        if (!dir.exists()) {
+            if (dir.mkdir()) {
+                System.out.println("Directory created.");
+            }
+        } else {
+            // Debug
+            System.out.println("Directory CollectionIndex already exists, continue...");
+        }
+
+        File vocabFile = new File(dir, "VocabularyFile.txt");
+        // https://www.datacamp.com/doc/java/create-&-write-files
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(vocabFile))) {
+
+            // Header
+            writer.write("Term\tDocumentFrequency\tTermFrequency");
+            writer.newLine();
+
+            // Terms, df, tf
+            for (Map.Entry<String, TermInfo> entry : vocab.entrySet()) {
+                String term = entry.getKey();
+                TermInfo info = entry.getValue();
+
+                writer.write(term + "\t" + info.getDF() + "\t" + info.totalFreqs());
+                writer.newLine();
+            }
+            System.out.println("VocabularyFile.txt file saved.");
+
+        } catch (java.io.IOException e) {
+            System.err.println("Error writing Vocabulary file: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args) {
         // Sample file and collection paths
@@ -216,11 +248,11 @@ public class WordCounter {
         String collectionDir = "dataset/MiniCollection";
 
         // Run for a SINGLE file (DemoMode = true)
-        WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
-        counterSingle.execute();
+//        WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
+//        counterSingle.execute();
 
         // Uncomment the lines below to run for the ENTIRE collection --> flag
-//         WordCounter counterAll = new WordCounter(collectionDir);
-//         counterAll.execute();
+         WordCounter counterAll = new WordCounter(collectionDir);
+         counterAll.execute();
     }
 }
