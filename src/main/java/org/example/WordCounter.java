@@ -28,7 +28,7 @@ public class WordCounter {
     private Set<String> stopWords;
 
     // Optimization test
-    // Pre-compiling patterns and reuse a Matcher
+    // Pre-compiled patterns
     // https://www.baeldung.com/java-regex-performance
     // If we want to remove only the punctuation_mark
     private static final Pattern punctuation_marks = Pattern.compile("\\p{Punct}");
@@ -36,12 +36,16 @@ public class WordCounter {
     // Pattern to identify and remove XML entities like &#x02013; or &amp;
     private static final Pattern xml_entity = Pattern.compile("&[#a-z0-9]+;");
 
+    // Global Vocabulary (Upgraded for B3/B4)
+    private TreeMap<String, TermInfo> vocab;
+
     // Constructor > Initializes the fields and loads the stop words
     public WordCounter(boolean DemoMode, String FilePath, String collectionPath) {
         this.DemoMode = DemoMode;
         this.FilePath = FilePath;
         this.collectionPath = collectionPath;
         this.stopWords = new HashSet<>();
+        this.vocab = new TreeMap<>();
         loadStopWords();
         Stemmer.Initialize();
     }
@@ -49,6 +53,7 @@ public class WordCounter {
     public WordCounter(String collectionPath) {
         this.collectionPath = collectionPath;
         this.stopWords = new HashSet<>();
+        this.vocab = new TreeMap<>();
         loadStopWords();
         Stemmer.Initialize();
     }
@@ -60,6 +65,7 @@ public class WordCounter {
             File file = new File(FilePath);
             if (file.exists()) {
                 countWords(file);
+                printVoc();
             } else {
                 System.err.println("Error: File not found at " + FilePath);
             }
@@ -71,49 +77,36 @@ public class WordCounter {
 
     // Processes a single NXML file and prints the count of distinct words
     private void countWords(File nxmlFile) {
-        // TreeMap ensures lexicographical order for the Vocabulary
-        TreeMap<String, TermInfo> vocab = new TreeMap<>();
-        System.out.println("==============Count Words=======================");
-
+        Set<String> tempVoc = new HashSet<>();
         try {
             NXMLFileReader xmlFile = new NXMLFileReader(nxmlFile);
 
             // Extract content from required tags
-            processTag(xmlFile.getTitle(), "Title", vocab);
-            processTag(xmlFile.getAbstr(), "Abstract", vocab);
-            processTag(xmlFile.getBody(), "Body", vocab);
-            processTag(xmlFile.getJournal(), "Journal", vocab);
-            processTag(xmlFile.getPublisher(), "Publisher", vocab);
+            processTag(xmlFile.getTitle(), "Title", tempVoc);
+            processTag(xmlFile.getAbstr(), "Abstract", tempVoc);
+            processTag(xmlFile.getBody(), "Body", tempVoc);
+            processTag(xmlFile.getJournal(), "Journal", tempVoc);
+            processTag(xmlFile.getPublisher(), "Publisher", tempVoc);
 
             if (xmlFile.getAuthors() != null) {
                 for (String author : xmlFile.getAuthors()) {
-                    processTag(author, "Authors", vocab);
+                    processTag(author, "Authors", tempVoc);
                 }
             }
             if (xmlFile.getCategories() != null) {
                 for (String category : xmlFile.getCategories()) {
-                    processTag(category, "Categories", vocab);
+                    processTag(category, "Categories", tempVoc);
                 }
             }
-
-            // Output the results
-            System.out.println("File: " + nxmlFile.getName());
-            System.out.println("Distinct word count: " + vocab.size());
-            System.out.println("================================================");
-
-            for (Map.Entry<String, TermInfo> word : vocab.entrySet()) {
-                System.out.print("Word: [" + word.getKey() + "] -> ");
-                Map<String, Integer> freqs = word.getValue().getFreqs();
-                freqs.forEach((tag, count) -> System.out.print(tag + ": " + count + " | "));
-                System.out.println();
+            for (String word : tempVoc) {
+                vocab.get(word).incrementDF();
             }
-
         } catch (Exception e) {
             System.err.println("Error parsing NXML: " + e.getMessage());
         }
     }
 
-    private void processTag(String content, String tagName, TreeMap<String, TermInfo> vocab) {
+    private void processTag(String content, String tagName, Set<String> fileVoc) {
         if (content == null || content.trim().isEmpty()) return;
 
         //String cleanText = removePunctuation(content);
@@ -139,8 +132,20 @@ public class WordCounter {
                 vocab.putIfAbsent(stmTok, new TermInfo());
                 // Update the frequency for this specific tag
                 vocab.get(stmTok).Occurs(tagName);
+                fileVoc.add(stmTok);
 
             }
+        }
+    }
+    private void printVoc() {
+        System.out.println("============== Vocabulary Output ===============");
+        System.out.println("Distinct word count: " + vocab.size());
+
+        for (Map.Entry<String, TermInfo> word : vocab.entrySet()) {
+            TermInfo info = word.getValue();
+            System.out.print("Word: [" + word.getKey() + "] -> DF: " + info.getDF() + " | Tags: ");
+            info.getFreqs().forEach((tag, count) -> System.out.print(tag + ": " + count + " | "));
+            System.out.println();
         }
     }
     /**
@@ -219,66 +224,3 @@ public class WordCounter {
 //         counterAll.execute();
     }
 }
-
-// Processes a single NXML file and prints the count of distinct words
-//    private void countWords(File nxmlFile) {
-//        Set<String> distinctWords = new HashSet<>();
-//        // Instead of using String (immutable), Use StringBuilder (mutable)
-//        StringBuilder fullText = new StringBuilder();
-//        System.out.println("==============Count Words=======================");
-//        try {
-//            NXMLFileReader xmlFile = new NXMLFileReader(nxmlFile);
-//
-//            // Collect text from all relevant tags
-//            if (xmlFile.getPMCID() != null) fullText.append(xmlFile.getPMCID()).append(" ");
-//            if (xmlFile.getTitle() != null) fullText.append(xmlFile.getTitle()).append(" ");
-//            if (xmlFile.getAbstr() != null) fullText.append(xmlFile.getAbstr()).append(" ");
-//            if (xmlFile.getBody() != null) fullText.append(xmlFile.getBody()).append(" ");
-//            if (xmlFile.getJournal() != null) fullText.append(xmlFile.getJournal()).append(" ");
-//            if (xmlFile.getPublisher() != null) fullText.append(xmlFile.getPublisher()).append(" ");
-//
-//            if (xmlFile.getAuthors() != null) {
-//                for (String author : xmlFile.getAuthors()) fullText.append(author).append(" ");
-//            }
-//            if (xmlFile.getCategories() != null) {
-//                for (String category : xmlFile.getCategories()) fullText.append(category).append(" ");
-//            }
-//
-//            // Clean up the text
-//            String rawText = removePunctuation(fullText);
-//
-//            // Split into tokens based on whitespace
-//            String[] tokens = rawText.split("\\s+");
-//
-//            // Add to the HashSet (ignoring empty strings and stop words)
-//            for (String token : tokens) {
-////                System.out.println(token);
-//                if (!token.isEmpty() && !stopWords.contains(token)) {
-//                    distinctWords.add(token);
-//                }
-//            }
-//
-//            // Output the results
-//            System.out.println("File: " + nxmlFile.getName());
-//            System.out.println("Distinct word count: " + distinctWords.size());
-//            System.out.println("================================================");
-//
-//        } catch (Exception e) {
-//            System.err.println("Error processing file: " + nxmlFile.getName());
-//        }
-//        /**
-//         * Clean up the text, convert to lowercase and replace punctuation with spaces
-//         *
-//         * @param s
-//         * @return
-//         */
-//        static String removePunctuation(StringBuilder s) {
-//            String raw = s.toString().toLowerCase();
-//            //https://stackoverflow.com/questions/6255329/php-and-regexp-to-accept-only-greek-characters-in-form
-//            String delimReg = "[^a-zα-ωίϊΐόάέύϋΰήώ0-9\\s]";
-//            raw = raw.replaceAll(delimReg, " ");
-//            //s.replaceAll("\\p{Punct}",""); // removes punctuation
-//            //String sOut = Normalizer.normalize(s, Normalizer.Form.NFD); // this will separate all of the accent marks from the characters.
-//            //sOut = sOut.replaceAll("\\p{M}", ""); // exlcudes accents for all unicode
-//            return raw;
-//        }

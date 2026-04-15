@@ -5,9 +5,18 @@ import java.util.*;
 
 class TermInfo {
     private Map<String, Integer> freqs;
+    // Document Frequency
+    private int df;
 
     public TermInfo() {
         this.freqs = new HashMap<>();
+        this.df = 0;
+    }
+    public void incrementDF() {
+        this.df++;
+    }
+    public int getDF() {
+        return df;
     }
     // add οccurrence
     public void Occurs(String tagName) {
