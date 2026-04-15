@@ -1,6 +1,7 @@
 package org.example;
 
 import gr.uoc.csd.hy463.NXMLFileReader;
+import mitos.stemmer.Stemmer;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -20,8 +21,8 @@ import java.util.stream.Stream;
 public class WordCounter {
 
     // Testing/Demo fields
-    private boolean DemoMode;
-    private String FilePath;
+    private boolean DemoMode = false;;
+    private String FilePath = null;
     // Core fields
     private String collectionPath;
     private Set<String> stopWords;
@@ -30,7 +31,7 @@ public class WordCounter {
     // Pre-compiling patterns and reuse a Matcher
     // https://www.baeldung.com/java-regex-performance
     // If we want to remove only the punctuation_mark
-    private static final Pattern punctuation_mark = Pattern.compile("\\p{Punct}");
+    private static final Pattern punctuation_marks = Pattern.compile("\\p{Punct}");
     private static final Pattern words_pattern = Pattern.compile("[^a-zα-ωίϊΐόάέύϋΰήώ0-9\\s]");
     // Pattern to identify and remove XML entities like &#x02013; or &amp;
     private static final Pattern xml_entity = Pattern.compile("&[#a-z0-9]+;");
@@ -42,14 +43,14 @@ public class WordCounter {
         this.collectionPath = collectionPath;
         this.stopWords = new HashSet<>();
         loadStopWords();
+        Stemmer.Initialize();
     }
     // Optional parameter DemoMode
     public WordCounter(String collectionPath) {
-        this.DemoMode = false;
-        this.FilePath = null;
         this.collectionPath = collectionPath;
         this.stopWords = new HashSet<>();
         loadStopWords();
+        Stemmer.Initialize();
     }
 
     //Chooses between Single File Mode and full Collection Mode
@@ -123,15 +124,22 @@ public class WordCounter {
 
         for (String token : tokens) {
             if (!token.isEmpty() && !stopWords.contains(token)) {
+                String stmTok = Stemmer.Stem(token);
+                //System.out.println(token +"->" + Stemmer.Stem(token));
                 // If term doesn't exist, create a new TermInfo object
                 //if (!vocab.containsKey(token)) {
                     //TermInfo newFolder = new TermInfo();
                     //vocab.put(token, newFolder);
                 //}
                 // Goated function
-                vocab.putIfAbsent(token, new TermInfo());
+                // --> B1
+                // vocab.putIfAbsent(token, new TermInfo());
+                // vocab.get(token).Occurs(tagName);
+
+                vocab.putIfAbsent(stmTok, new TermInfo());
                 // Update the frequency for this specific tag
-                vocab.get(token).Occurs(tagName);
+                vocab.get(stmTok).Occurs(tagName);
+
             }
         }
     }
@@ -160,7 +168,7 @@ public class WordCounter {
             System.err.println("Error: Collection folder not found at " + folderPath);
             return;
         }
-
+        // https://stackoverflow.com/questions/1844688/how-can-i-read-all-files-in-a-folder-from-java
         try (Stream<Path> paths = Files.walk(root)) {
             paths.filter(Files::isRegularFile)
                     .filter(path -> path.toString().endsWith(".nxml"))
