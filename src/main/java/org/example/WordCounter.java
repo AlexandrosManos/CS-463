@@ -8,10 +8,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
@@ -23,6 +21,9 @@ public class WordCounter {
     // Core fields
     private String collectionPath;
     private Set<String> stopWords;
+
+    private List<DocInfo> documentList = new ArrayList<>();
+    private int docIdCounter = 1;
 
     // Optimization test
     // Pre-compiled patterns
@@ -70,41 +71,59 @@ public class WordCounter {
             System.out.println("Collection Mode");
             processCollection(collectionPath);
             VocabularyFile();
+            DocumentsFile();
         }
     }
 
     // Processes a single NXML file and prints the count of distinct words
     private void countWords(File nxmlFile) {
+
+        Map<String, Integer> fileTermFrequencies = new HashMap<>();
         Set<String> tempVoc = new HashSet<>();
+        AtomicInteger positionCounter = new AtomicInteger(0);
+        int currentDocID = docIdCounter;
         try {
             NXMLFileReader xmlFile = new NXMLFileReader(nxmlFile);
 
             // Extract content from required tags
-            processTag(xmlFile.getTitle(), "Title", tempVoc);
-            processTag(xmlFile.getAbstr(), "Abstract", tempVoc);
-            processTag(xmlFile.getBody(), "Body", tempVoc);
-            processTag(xmlFile.getJournal(), "Journal", tempVoc);
-            processTag(xmlFile.getPublisher(), "Publisher", tempVoc);
+            processTag(xmlFile.getTitle(), "Title", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
+            processTag(xmlFile.getAbstr(), "Abstract", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
+            processTag(xmlFile.getBody(), "Body", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
+            processTag(xmlFile.getJournal(), "Journal", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
+            processTag(xmlFile.getPublisher(), "Publisher", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
 
             if (xmlFile.getAuthors() != null) {
                 for (String author : xmlFile.getAuthors()) {
-                    processTag(author, "Authors", tempVoc);
+                    processTag(author, "Authors", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
                 }
             }
             if (xmlFile.getCategories() != null) {
                 for (String category : xmlFile.getCategories()) {
-                    processTag(category, "Categories", tempVoc);
+                    processTag(category, "Categories", tempVoc, fileTermFrequencies, currentDocID, positionCounter);
                 }
             }
             for (String word : tempVoc) {
                 vocab.get(word).incrementDF();
             }
+
+            double sumOfSquares = 0;
+            for (int tf : fileTermFrequencies.values()) {
+                double weight = 1 + (Math.log(tf) / Math.log(2));
+                sumOfSquares += Math.pow(weight, 2);
+            }
+            double norm = Math.sqrt(sumOfSquares);
+
+            String relPath = nxmlFile.getPath().replace(collectionPath, "");
+            documentList.add(new DocInfo(docIdCounter++, relPath, norm));
         } catch (Exception e) {
             System.err.println("Error parsing NXML: " + e.getMessage());
         }
     }
 
-    private void processTag(String content, String tagName, Set<String> fileVoc) {
+    private void processTag(String content, String tagName, Set<String> fileVoc,
+                            Map<String, Integer> fileTermFrequencies,
+                            int docID, AtomicInteger positionCounter)
+    {
         if (content == null || content.trim().isEmpty()) return;
 
         //String cleanText = removePunctuation(content);
@@ -114,6 +133,8 @@ public class WordCounter {
         String[] tokens = cleanText.split("\\s+");
 
         for (String token : tokens) {
+            // Increment position counter for every token found in the text
+            int currentPos = positionCounter.incrementAndGet();
             if (!token.isEmpty() && !stopWords.contains(token)) {
                 String stmTok = Stemmer.Stem(token);
                 //System.out.println(token +"->" + Stemmer.Stem(token));
@@ -128,8 +149,14 @@ public class WordCounter {
                 // vocab.get(token).Occurs(tagName);
 
                 vocab.putIfAbsent(stmTok, new TermInfo());
+
+                // Map the term to the current Document ID and record its exact position.
+                vocab.get(stmTok).AddOccurrence(docID, currentPos);
+
                 // Update the frequency for this specific tag
                 vocab.get(stmTok).Occurs(tagName);
+
+                fileTermFrequencies.put(stmTok, fileTermFrequencies.getOrDefault(stmTok, 0) + 1);
                 fileVoc.add(stmTok);
 
             }
@@ -220,11 +247,13 @@ public class WordCounter {
         }
 
         File vocabFile = new File(dir, "VocabularyFile.txt");
+        File postingFile = new File(dir, "PostingFile.txt");
         // https://www.datacamp.com/doc/java/create-&-write-files
-        try (BufferedWriter writer = new BufferedWriter(new FileWriter(vocabFile))) {
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(vocabFile));
+             RandomAccessFile raf = new RandomAccessFile(postingFile, "rw")) {
 
             // Header
-            writer.write("Term\tDocumentFrequency\tTermFrequency");
+            writer.write("Term\tDocumentFrequency\tTermFrequency\tOffset");
             writer.newLine();
 
             // Terms, df, tf
@@ -232,7 +261,22 @@ public class WordCounter {
                 String term = entry.getKey();
                 TermInfo info = entry.getValue();
 
-                writer.write(term + "\t" + info.getDF() + "\t" + info.totalFreqs());
+                //Get the current byte position (offset) before writing postings
+                long currentOffset = raf.getFilePointer();
+                //Write postings for this term to the binary file
+                //Structure: [DocID]->[TF]->[Positions]
+                for (Map.Entry<Integer, Posting> pEntry : info.GetPostings().entrySet()) {
+                    Posting p = pEntry.getValue();
+
+                    raf.writeInt(p.documentID);
+                    raf.writeInt(p.GetTF());
+                    for (int pos : p.positions) {
+                        raf.writeInt(pos);
+                    }
+                }
+
+                // Updated Vocabulary record with the Offset
+                writer.write(term + "\t" + info.getDF() + "\t" + info.totalFreqs() + "\t" + currentOffset);
                 writer.newLine();
             }
             System.out.println("VocabularyFile.txt file saved.");
@@ -242,14 +286,29 @@ public class WordCounter {
         }
     }
 
+    private void DocumentsFile()
+    {
+        File dir = new File("CollectionIndex");
+        File docFile = new File(dir, "DocumentsFile.txt");
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(docFile))) {
+            for (DocInfo doc : documentList) {
+                writer.write(doc.documentID + "\t" + doc.filePath + "\t" + String.format("%.4f", doc.documentNorm));
+                writer.newLine();
+            }
+            System.out.println("DocumentsFile.txt saved.");
+        } catch (IOException e) {
+            System.err.println("Error writing Documents file: " + e.getMessage());
+        }
+    }
+
     public static void main(String[] args) {
         // Sample file and collection paths
         String testFile = "dataset/MiniCollection/diagnosis/Topic_1/0/1852545.nxml";
         String collectionDir = "dataset/MiniCollection";
 
         // Run for a SINGLE file (DemoMode = true)
-//        WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
-//        counterSingle.execute();
+        //WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
+        //counterSingle.execute();
 
         // Uncomment the lines below to run for the ENTIRE collection --> flag
          WordCounter counterAll = new WordCounter(collectionDir);
