@@ -21,6 +21,10 @@ public class WordCounter {
     private Indexer indexer;
     private DocumentParser parser;
 
+    private int threshold = 10;
+    private int partID = 1;
+    private int currentBatch = 0;
+
     // Constructor > Initializes the fields and loads the stop words
     public WordCounter(boolean DemoMode, String FilePath, String collectionPath) {
         this.DemoMode = DemoMode;
@@ -56,7 +60,6 @@ public class WordCounter {
         } else {
             System.out.println("Collection Mode");
             processCollection(collectionPath);
-            indexer.VocabularyFile();
             indexer.DocumentsFile();
         }
     }
@@ -85,10 +88,28 @@ public class WordCounter {
         // https://stackoverflow.com/questions/1844688/how-can-i-read-all-files-in-a-folder-from-java
         try (Stream<Path> paths = Files.walk(root)) {
             paths.filter(Files::isRegularFile)
-                    .filter(path -> path.toString().endsWith(".nxml"))
-                    .forEach(path -> {
-                        parser.countWords(path.toFile(), docIdCounter++, collectionPath);
-                    });
+                .filter(path -> path.toString().endsWith(".nxml"))
+                .forEach(path -> {
+                    parser.countWords(path.toFile(), docIdCounter++, collectionPath);
+                    currentBatch++;
+
+                    if(currentBatch >= threshold)
+                    {
+                        System.out.println("Saving partial index " + partID);
+                        indexer.SavePartialIndex(partID++);
+                        indexer.getVocab().clear(); // CRITICAL: Free memory
+                        currentBatch = 0;
+                    }
+                });
+
+            if (!indexer.getVocab().isEmpty())
+            {
+                indexer.SavePartialIndex(partID++);
+            }
+
+            indexer.MergePartialIndexes(partID - 1);
+            indexer.DocumentsFile();
+
             System.out.println("Collection processing completed.");
         } catch (Exception e) {
             System.err.println("Error while traversing the folder path.");
