@@ -21,9 +21,10 @@ public class WordCounter {
     private Indexer indexer;
     private DocumentParser parser;
 
-    private int threshold = 10;
     private int partID = 1;
-    private int currentBatch = 0;
+    private double ramUsageBound = 0.80;
+//    private int threshold = 10;
+//    private int currentBatch = 0;
 
     // Constructor > Initializes the fields and loads the stop words
     public WordCounter(boolean DemoMode, String FilePath, String collectionPath) {
@@ -65,7 +66,7 @@ public class WordCounter {
     }
 
     private void printVoc() {
-        System.out.println("============== Vocabulary Output ===============");
+        System.out.println("\n\n Vocabulary Output");
         System.out.println("Distinct word count: " + indexer.getVocab().size());
 
         for (Map.Entry<String, TermInfo> word : indexer.getVocab().entrySet()) {
@@ -89,17 +90,30 @@ public class WordCounter {
         try (Stream<Path> paths = Files.walk(root)) {
             paths.filter(Files::isRegularFile)
                 .filter(path -> path.toString().endsWith(".nxml"))
-                .forEach(path -> {
-                    parser.countWords(path.toFile(), docIdCounter++, collectionPath);
-                    currentBatch++;
+                    .forEach(path -> {
+                        parser.countWords(path.toFile(), docIdCounter++, collectionPath);
 
-                    if(currentBatch >= threshold)
-                    {
-                        System.out.println("Saving partial index " + partID);
-                        indexer.SavePartialIndex(partID++);
-                        indexer.getVocab().clear(); // CRITICAL: Free memory
-                        currentBatch = 0;
-                    }
+                        // dynamic ram check
+                        // https://stackoverflow.com/questions/12807797/java-get-available-memory
+
+                        Runtime runtime = Runtime.getRuntime();
+                        long usedMemory = runtime.totalMemory() - runtime.freeMemory();
+                        // Maximum Heap Size --> set to 6144 MiB
+                        long maxMemory = runtime.maxMemory();
+                        double memoryUsage = (double) usedMemory / maxMemory;
+
+                        // if ram usage exceeds 80%, move to disk
+                        if (memoryUsage >= ramUsageBound) {
+                            System.out.println("Memory at "
+                                    + (memoryUsage * 100) + "%. Saving partial index " + partID);
+
+                            indexer.SavePartialIndex(partID++);
+                            indexer.getVocab().clear();
+
+                            // run garbage collector to reclaim the cleared memory
+                            // https://stackoverflow.com/questions/1481178/how-to-force-garbage-collection-in-java
+                            System.gc();
+                        }
                 });
 
             if (!indexer.getVocab().isEmpty())
@@ -120,13 +134,36 @@ public class WordCounter {
         // Sample file and collection paths
         String testFile = "dataset/MiniCollection/diagnosis/Topic_1/0/1852545.nxml";
         String collectionDir = "dataset/MiniCollection";
+        String fullCollectionDir = "dataset/MedicalCollection";
 
         // Run for a SINGLE file (DemoMode = true)
-        // WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
-        // counterSingle.execute();
 
-        // Uncomment the lines below to run for the ENTIRE collection --> flag
-        WordCounter counterAll = new WordCounter(collectionDir);
-        counterAll.execute();
+        /*
+         WordCounter counterSingle = new WordCounter(true, testFile, collectionDir);
+         counterSingle.execute();
+         */
+
+        // Run the mini collection
+        // WordCounter counterAll = new WordCounter(fullCollectionDir);
+
+        // Uncomment the lines below to run for the Medical collection
+        WordCounter counterAll = new WordCounter(fullCollectionDir);
+        long startTime = System.currentTimeMillis();
+        try{
+            counterAll.execute();
+        }catch (Throwable t){
+            t.printStackTrace();
+        }finally {
+            long endTime = System.currentTimeMillis();
+            long totalTimeMs = endTime - startTime;
+
+            long minutes = (totalTimeMs / 1000) / 60;
+            long seconds = (totalTimeMs / 1000) % 60;
+            long milliseconds = totalTimeMs % 1000;
+
+            String formattedTime = String.format("%02d:%02d:%03d", minutes, seconds, milliseconds);
+
+            System.out.println("Total Execution Time: " + formattedTime + " (minutes:second:millisecond)");
+        }
     }
 }
