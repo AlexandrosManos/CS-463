@@ -22,7 +22,7 @@ public class WordCounter {
     private DocumentParser parser;
 
     private int partID = 1;
-    private double ramUsageBound = 0.80;
+    private double ramUsageBound = 0.01;
 //    private int threshold = 10;
 //    private int currentBatch = 0;
 
@@ -144,10 +144,10 @@ public class WordCounter {
          */
 
         // Run the mini collection
-        // WordCounter counterAll = new WordCounter(fullCollectionDir);
+        WordCounter counterAll = new WordCounter(collectionDir);
 
         // Uncomment the lines below to run for the Medical collection
-        WordCounter counterAll = new WordCounter(fullCollectionDir);
+        //WordCounter counterAll = new WordCounter(fullCollectionDir);
         long startTime = System.currentTimeMillis();
         try{
             counterAll.execute();
