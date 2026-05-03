@@ -216,7 +216,7 @@ public class Searcher
         System.out.println("=".repeat(120) + "\n");
     }
 
-    public void evaluateTopics(String xmlPath, boolean summary) {
+    public void automatedEvaluation(String xmlPath, boolean summary) {
         try {
             ArrayList<Topic> topics = TopicsReader.readTopics(xmlPath);
 
@@ -257,6 +257,8 @@ public class Searcher
         Scanner scanner = new Scanner(System.in);
 
         System.out.println("--- Search Engine ---");
+        long startTime;
+        long endTime;
         while (true)
         {
             System.out.println("1. Simple Search");
@@ -267,11 +269,18 @@ public class Searcher
             if (input.equals("1")) {
                 System.out.print("\nEnter term to search (or 'exit'): ");
                 input = scanner.nextLine();
-                if (!input.trim().isEmpty())
+                if (input.equals("exit"))
+                    break;
+                if (!input.trim().isEmpty()){
+                    startTime = System.currentTimeMillis();
                     searcher.vsmSeach(input);
+                    endTime = System.currentTimeMillis();
+                    System.out.println("Simple Search completed in: " + (endTime - startTime) + " ms.");
+                }
             } else if (input.equals("2")) {
                 System.out.println("1) Use Summary to Create Query");
                 System.out.println("2) Use Description to Create Query");
+                System.out.print("Type the number of the option: ");
                 input = scanner.nextLine();
                 boolean summary = true;
                  if (input.equals("2")) {
@@ -282,7 +291,10 @@ public class Searcher
                 String topicPath = "dataset/topics.xml";
                 File topics = new File(topicPath);
                 if (topics.exists()) {
-                    searcher.evaluateTopics(topicPath, summary);
+                    startTime = System.currentTimeMillis();
+                    searcher.automatedEvaluation(topicPath, summary);
+                    endTime = System.currentTimeMillis();
+                    System.out.println(" Total evaluation time: " + (endTime - startTime) + " ms.");
                 } else {
                     System.err.println("File [" + topicPath + "] not found.");
                 }
