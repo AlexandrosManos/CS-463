@@ -1,6 +1,8 @@
 package org.search;
 
-import org.example.TextAnalyzer; // Κάνε import τον Analyzer από το πακέτο του
+import gr.uoc.csd.hy463.Topic;
+import gr.uoc.csd.hy463.TopicsReader;
+import org.example.TextAnalyzer;
 import org.utils.Utilities;
 
 import java.io.*;
@@ -22,7 +24,7 @@ public class Searcher
     }
 
     private Map<String, VocabularyData> localVocab = new TreeMap<>();
-    private TextAnalyzer analyzer = new TextAnalyzer();
+    private TextAnalyzer analyzer = new TextAnalyzer(true);
 
     private static class DocumentData
     {
@@ -86,13 +88,15 @@ public class Searcher
         File docFile = new File("CollectionIndex/DocumentsFile.txt");
         try (BufferedReader reader = new BufferedReader(new FileReader(docFile)))
         {
-            String line = reader.readLine(); // skip header
+//            String line = reader.readLine(); // skip header
+            String line;
             while ((line = reader.readLine()) != null)
             {
                 String[] parts = line.split("\t");
                 int id = Integer.parseInt(parts[0]);
                 String path = parts[1];
-                double norm = Double.parseDouble(parts[2]);
+                // Safety feature
+                double norm = Double.parseDouble(parts[2].replace(",", "."));
                 localDocs.put(id, new DocumentData(path, norm));
                 totalDocuments++;
             }
@@ -121,7 +125,10 @@ public class Searcher
 
         for (String term : queryFreqs.keySet()) {
             VocabularyData entry = localVocab.get(term);
-            if (entry == null) continue;
+            if (entry == null) {
+                System.out.println("Term [" + term + "] is OOV");
+                continue;
+            }
 
             // Calculate Query Weight
             double tfq = Utilities.calculateTF(queryFreqs.get(term));
@@ -138,7 +145,14 @@ public class Searcher
                 for (int i = 0; i < entry.df; i++) {
                     int docID = raf.readInt();
                     int freqInDoc = raf.readInt();
-                    for (int p = 0; p < freqInDoc; p++) raf.readInt(); // Skip positional data
+                    // Code for snippet ...
+//                    List<Integer> docPositions = new ArrayList<>();
+//                    int realPos = 0;
+                    for (int p = 0; p < freqInDoc; p++) {
+                        raf.readInt(); // Skip positional data
+//                        realPos += raf.readInt();
+//                        docPositions.add(realPos);
+                    }
 
                     // Calculate Document Weight
                     double tfD = Utilities.calculateTF(freqInDoc);
@@ -157,7 +171,13 @@ public class Searcher
 
         for (Map.Entry<Integer, Double> entry : docScores.entrySet()) {
             int docID = entry.getKey();
-            double docNorm = localDocs.get(docID).norm;
+            DocumentData docData = localDocs.get(docID);
+
+            if (docData == null) {
+                System.err.println("Warning: Document ID " + docID + " not found in localDocs!");
+                continue;
+            }
+            double docNorm =docData.norm;
 
             // Cosine Similarity
             double score = Utilities.calculateCosineSimilarity(entry.getValue(), docNorm, queryNorm);
@@ -196,23 +216,83 @@ public class Searcher
         System.out.println("=".repeat(120) + "\n");
     }
 
+    public void evaluateTopics(String xmlPath, boolean summary) {
+        try {
+            ArrayList<Topic> topics = TopicsReader.readTopics(xmlPath);
+
+            System.out.print("Topic evaluation using the ");
+            if(summary) {
+                System.out.println("summary");
+            }else{
+                System.out.println("description");
+            }
+
+            for (Topic topic : topics) {
+                System.out.println();
+                System.out.println("Topic Number: " + topic.getNumber());
+                System.out.println("with type: " + topic.getType());
+
+                String text;
+                if (summary) {
+                    text = topic.getSummary();
+                }else {
+                    text = topic.getDescription();
+                }
+
+
+
+                vsmSeach(text);
+
+                System.out.println("Results [" + topic.getNumber() + "]");
+                System.out.println("---");
+            }
+        } catch (Exception e) {
+            System.err.println("Error reading the file: " + e.getMessage());
+        }
+    }
 
     public static void main(String[] args)
     {
         Searcher searcher = new Searcher();
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("--- Simple Search---");
+        System.out.println("--- Search Engine ---");
         while (true)
         {
-            System.out.print("\nEnter term to search (or 'exit'): ");
+            System.out.println("1. Simple Search");
+            System.out.println("2. Evaluate Topics");
+            System.out.println("3. Exit");
+            System.out.print("Type the number of the option: ");
             String input = scanner.nextLine();
-            if (input.equalsIgnoreCase("exit"))
+            if (input.equals("1")) {
+                System.out.print("\nEnter term to search (or 'exit'): ");
+                input = scanner.nextLine();
+                if (!input.trim().isEmpty())
+                    searcher.vsmSeach(input);
+            } else if (input.equals("2")) {
+                System.out.println("1) Use Summary to Create Query");
+                System.out.println("2) Use Description to Create Query");
+                input = scanner.nextLine();
+                boolean summary = true;
+                 if (input.equals("2")) {
+                     summary = false;
+                }else if (!input.equals("1")){
+                    System.out.println("Invalid choice.. using summary...");
+                }
+                String topicPath = "dataset/topics.xml";
+                File topics = new File(topicPath);
+                if (topics.exists()) {
+                    searcher.evaluateTopics(topicPath, summary);
+                } else {
+                    System.err.println("File [" + topicPath + "] not found.");
+                }
+            }else if (input.equals("3")) {
+                System.out.println("Exiting...");
                 break;
-            if (input.trim().isEmpty())
-                continue;
+            }else {
+                System.out.println("Invalid option. Try again.");
+            }
 
-            searcher.vsmSeach(input);
         }
         scanner.close();
     }

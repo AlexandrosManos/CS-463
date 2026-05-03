@@ -19,11 +19,11 @@ public class Utilities
 
     /**
      * Calculates the Inverse Document Frequency (IDF).
-     * Formula: idf = log2(N / df)
+     * Formula: idf = log2(N / df) + 0.1
      */
     public static double calculateIDF(int N, int df) {
         if (df <= 0) return 0.0;
-        return Math.log((double) N / df) / Math.log(2);
+        return Math.log((double) N / df) / Math.log(2) + 0.1;
     }
 
     /**

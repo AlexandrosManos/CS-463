@@ -32,6 +32,12 @@ public class TextAnalyzer {
         Stemmer.Initialize();
     }
 
+    public TextAnalyzer(boolean medicalStopWords) {
+        this.stopWords = new HashSet<>();
+        loadStopWords(medicalStopWords);
+        Stemmer.Initialize();
+    }
+
     public List<String> analyze(String content) {
         // Already checked in DocumentParser, but we can keep it here for safety if this
         // method is used elsewhere
@@ -76,7 +82,16 @@ public class TextAnalyzer {
         EditStopWords("/stopwords/stopwordsEn.txt");
         EditStopWords("/stopwords/stopwordsGr.txt");
     }
+    // Loads the stop words into memory
+    private void loadStopWords(boolean evaluate) {
+        EditStopWords("/stopwords/stopwordsEn.txt");
+        EditStopWords("/stopwords/stopwordsGr.txt");
+        // optionally
+        if (evaluate) {
+            EditStopWords("/stopwords/stopwordsMedical.txt");
 
+        }
+    }
     // Reads a stop words file from the project's resources folder
     private void EditStopWords(String resourcePath) {
         try (InputStream is = getClass().getResourceAsStream(resourcePath)) {
