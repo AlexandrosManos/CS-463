@@ -127,7 +127,11 @@ public class Searcher
             VocabularyData entry = localVocab.get(term);
             if (entry == null) {
                 System.out.println("Term [" + term + "] is OOV");
-                continue;
+                String correctedTerm = handleOOV(term);
+                if (correctedTerm == null)
+                    continue;
+                else
+                    entry = localVocab.get(correctedTerm);
             }
 
             // Calculate Query Weight
@@ -239,8 +243,6 @@ public class Searcher
                     text = topic.getDescription();
                 }
 
-
-
                 vsmSeach(text);
 
                 System.out.println("Results [" + topic.getNumber() + "]");
@@ -250,6 +252,42 @@ public class Searcher
             System.err.println("Error reading the file: " + e.getMessage());
         }
     }
+
+
+    private String handleOOV(String oovTerm) {
+        String bestMatch = null;
+        int minDistance = Integer.MAX_VALUE;
+        int threshold;
+
+        if(oovTerm == null || oovTerm.isEmpty())
+            return null;
+
+        // for bigger terms we are more tolerant
+        threshold = oovTerm.length()/3 + 1;
+
+        for (String vocabTerm : localVocab.keySet()) {
+            if (Math.abs(vocabTerm.length() - oovTerm.length()) > threshold) {
+                continue;
+            }
+            int distance = Utilities.editDistance(oovTerm, vocabTerm);
+            if (distance < minDistance) {
+                minDistance = distance;
+                bestMatch = vocabTerm;
+            }
+
+            if (minDistance <= 1) break;
+        }
+
+        if (bestMatch != null && minDistance <= threshold) {
+            System.out.println("Out of Vocabulary term [" + oovTerm + "] Replaced with [" + bestMatch + "]" +
+                    "with edit Distance: [" + minDistance + "]");
+            return bestMatch;
+        } else {
+            System.out.println("Out of Vocabulary term [" + oovTerm + "] has no close match found.");
+            return null;
+        }
+    }
+
 
     public static void main(String[] args)
     {

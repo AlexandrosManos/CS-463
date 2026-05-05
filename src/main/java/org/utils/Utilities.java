@@ -1,5 +1,7 @@
 package org.utils;
 
+import java.util.Arrays;
+
 /**
  * Utility class providing static methods for Information Retrieval calculations.
  * Source: Vector Space Model principles.
@@ -42,4 +44,39 @@ public class Utilities
         if (normD == 0 || normQ == 0) return 0.0;
         return dotProduct / (normD * normQ);
     }
+
+    // https://www.baeldung.com/java-levenshtein-distance
+    public static int costOfSubstitution(char a, char b) {
+        return a == b ? 0 : 1;
+    }
+
+    public static int min(int a, int b, int c) {
+        return Math.min(a, Math.min(b, c));
+    }
+
+    public static int editDistance(String x, String y) {
+        int[][] dp = new int[x.length() + 1][y.length() + 1];
+
+        for (int i = 0; i <= x.length(); i++) {
+            for (int j = 0; j <= y.length(); j++) {
+                if (i == 0) {
+                    dp[i][j] = j;
+                }
+                else if (j == 0) {
+                    dp[i][j] = i;
+                }
+                else {
+                    dp[i][j] = min(
+                            dp[i - 1][j - 1] + costOfSubstitution(x.charAt(i - 1), y.charAt(j - 1)),
+                            dp[i - 1][j] + 1,
+                            dp[i][j - 1] + 1
+                    );
+                }
+            }
+        }
+
+        return dp[x.length()][y.length()];
+    }
+
+
 }
