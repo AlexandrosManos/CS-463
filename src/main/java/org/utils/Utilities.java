@@ -1,5 +1,8 @@
 package org.utils;
 
+import gr.uoc.csd.hy463.NXMLFileReader;
+
+import java.io.File;
 import java.util.Arrays;
 
 /**
@@ -78,5 +81,68 @@ public class Utilities
         return dp[x.length()][y.length()];
     }
 
+    public String getSnippet(String filePath, String query) {
+        if (query == null || query.isEmpty()) return "Empty query";
+        query = query.toLowerCase().trim();
 
+        int index = -1;
+        int matched = 0;
+
+        try {
+            File f = new File(filePath);
+            if (!f.exists()) {
+                System.out.println("File " + filePath + " does not exist");
+                return "Could not load snippet.";
+            }
+
+            NXMLFileReader xmlFile = new NXMLFileReader(f);
+            String content = xmlFile.getBody();
+
+            if (content == null || content.trim().isEmpty()) {
+                content = xmlFile.getAbstr();
+            }
+
+            if (content == null) {
+                System.out.println("No content in XML file[" + filePath + "]");
+                return "Could not load snippet.";
+            }
+
+            // normalize spaces to create a single-line text
+            content = content.replaceAll("\\s+", " ");
+            String lowerContent = content.toLowerCase();
+
+            if (!query.isEmpty()) {
+                index = lowerContent.indexOf(query);
+                if (index != -1) {
+                    matched = query.length();
+                }
+            }
+
+            if (index == -1) {
+                String[] queryWords = query.split("\\s+");
+                for (String word : queryWords) {
+
+                    if (word.length() <= 2) continue;
+
+                    index = lowerContent.indexOf(word);
+                    if (index != -1) {
+                        matched = word.length();
+                        break;
+                    }
+                }
+            }
+
+            if (index != -1) {
+                // 50 chars before and 50 chars after the match
+                int start = Math.max(0, index - 50);
+                int end = Math.min(content.length(), index + matched + 50);
+                return content.substring(start, end).trim() + "...";
+            } else {
+                return "Not exact match.";
+            }
+
+        } catch (Exception e) {
+            return "Could not load snippet.";
+        }
+    }
 }

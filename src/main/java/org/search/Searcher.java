@@ -257,16 +257,16 @@ public class Searcher
     private String handleOOV(String oovTerm) {
         String bestMatch = null;
         int minDistance = Integer.MAX_VALUE;
-        int threshold;
+        int thres;
 
         if(oovTerm == null || oovTerm.isEmpty())
             return null;
 
         // for bigger terms we are more tolerant
-        threshold = oovTerm.length()/3 + 1;
+        thres = oovTerm.length()/3 + 1;
 
         for (String vocabTerm : localVocab.keySet()) {
-            if (Math.abs(vocabTerm.length() - oovTerm.length()) > threshold) {
+            if (Math.abs(vocabTerm.length() - oovTerm.length()) > thres) {
                 continue;
             }
             int distance = Utilities.editDistance(oovTerm, vocabTerm);
@@ -278,7 +278,7 @@ public class Searcher
             if (minDistance <= 1) break;
         }
 
-        if (bestMatch != null && minDistance <= threshold) {
+        if (bestMatch != null && minDistance <= thres) {
             System.out.println("Out of Vocabulary term [" + oovTerm + "] Replaced with [" + bestMatch + "]" +
                     "with edit Distance: [" + minDistance + "]");
             return bestMatch;
