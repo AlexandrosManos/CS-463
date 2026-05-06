@@ -38,7 +38,8 @@ public class Searcher
         }
     }
 
-    private static class ResultsData {
+    public static class ResultsData
+    {
         int docID;
         double score;
         double norm;
@@ -51,6 +52,26 @@ public class Searcher
             this.norm = norm;
             this.path = path;
             this.details = details;
+        }
+
+        public int getDocID()
+        {
+            return docID;
+        }
+
+        public double getNorm()
+        {
+            return norm;
+        }
+
+        public String getPath()
+        {
+            return path;
+        }
+
+        public String getDetails()
+        {
+            return details;
         }
     }
 
@@ -110,10 +131,11 @@ public class Searcher
     }
 
     // Search based on VSM using Cosine Similarity
-    public void vsmSeach(String query)
+    public List<ResultsData> vsmSeach(String query, String type)
     {
         List<String> tokens = analyzer.analyze(query);
-        if (tokens.isEmpty()) return;
+        if (tokens.isEmpty())
+            return new ArrayList<>();
 
         // Count term frequencies within the query
         Map<String, Integer> queryFreqs = new HashMap<>();
@@ -152,6 +174,17 @@ public class Searcher
                     // Code for snippet ...
 //                    List<Integer> docPositions = new ArrayList<>();
 //                    int realPos = 0;
+
+                    DocumentData docData = localDocs.get(docID);
+
+                    if (type != null && !type.isEmpty()) {
+                        if (!docData.path.toLowerCase().contains(type.toLowerCase())) {
+                            // Προσπέρασε τις θέσεις στο αρχείο και πήγαινε στο επόμενο έγγραφο
+                            for (int p = 0; p < freqInDoc; p++) raf.readInt();
+                            continue;
+                        }
+                    }
+
                     for (int p = 0; p < freqInDoc; p++) {
                         raf.readInt(); // Skip positional data
 //                        realPos += raf.readInt();
@@ -198,8 +231,8 @@ public class Searcher
 
         // Sort by score
         results.sort((a, b) -> Double.compare(b.score, a.score));
-
         displayResults(results, query);
+        return results;
     }
 
     private void displayResults(List<ResultsData> results, String query) {
@@ -243,7 +276,7 @@ public class Searcher
                     text = topic.getDescription();
                 }
 
-                vsmSeach(text);
+                vsmSeach(text, "");
 
                 System.out.println("Results [" + topic.getNumber() + "]");
                 System.out.println("---");
@@ -311,7 +344,7 @@ public class Searcher
                     break;
                 if (!input.trim().isEmpty()){
                     startTime = System.currentTimeMillis();
-                    searcher.vsmSeach(input);
+                    searcher.vsmSeach(input, "");
                     endTime = System.currentTimeMillis();
                     System.out.println("Simple Search completed in: " + (endTime - startTime) + " ms.");
                 }

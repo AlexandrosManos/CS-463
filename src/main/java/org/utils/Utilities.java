@@ -81,7 +81,7 @@ public class Utilities
         return dp[x.length()][y.length()];
     }
 
-    public String getSnippet(String filePath, String query) {
+    public static String getSnippet(String filePath, String query) {
         if (query == null || query.isEmpty()) return "Empty query";
         query = query.toLowerCase().trim();
 
