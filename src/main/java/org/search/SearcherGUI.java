@@ -1,6 +1,5 @@
 package org.search;
 
-import org.search.Searcher;
 import org.utils.Utilities;
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
@@ -34,6 +33,7 @@ public class SearcherGUI extends JFrame
         topPanel.add(typeField);
 
         JButton searchButton = new JButton("Search");
+        searchButton.setFocusPainted(false);
         searchButton.addActionListener(e -> performSearch());
         topPanel.add(searchButton);
 
@@ -50,9 +50,8 @@ public class SearcherGUI extends JFrame
 
     private void performSearch()
     {
-        String query = typeField.getText() + " " + queryField.getText();
+        String query = typeField.getText();
         String type = typeField.getText().trim();
-
         if (query.trim().isEmpty())
             return;
 
