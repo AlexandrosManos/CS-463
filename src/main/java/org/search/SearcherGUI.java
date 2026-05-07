@@ -52,7 +52,7 @@ public class SearcherGUI extends JFrame
     {
         String query = typeField.getText();
         String type = typeField.getText().trim();
-        if (query.trim().isEmpty())
+        if (query.trim().isEmpty() ||  type.trim().isEmpty())
             return;
 
         resultsPanel.removeAll();
