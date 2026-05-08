@@ -52,8 +52,8 @@ public class SearcherGUI extends JFrame
     {
         String query = queryField.getText().trim();
         String type = typeField.getText().trim();
-        if (query.trim().isEmpty() ||  type.trim().isEmpty()){
-            System.out.println("Query or type is empty, returning...");
+        if (query.trim().isEmpty() ){
+            System.out.println("Query is empty, returning...");
             return;
         }
 

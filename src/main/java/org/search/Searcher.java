@@ -179,7 +179,6 @@ public class Searcher
 
                     if (type != null && !type.isEmpty()) {
                         if (!docData.path.toLowerCase().contains(type.toLowerCase())) {
-                            // Προσπέρασε τις θέσεις στο αρχείο και πήγαινε στο επόμενο έγγραφο
                             for (int p = 0; p < freqInDoc; p++) raf.readInt();
                             continue;
                         }

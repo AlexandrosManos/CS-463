@@ -104,8 +104,8 @@ public class WordCounter {
 
                         // if ram usage exceeds 80%, move to disk
                         if (memoryUsage >= ramUsageBound) {
-                            System.out.println("Memory at "
-                                    + (memoryUsage * 100) + "%. Saving partial index " + partID);
+//                            System.out.println("Memory at "
+//                                    + (memoryUsage * 100) + "%. Saving partial index " + partID);
 
                             indexer.SavePartialIndex(partID++);
                             indexer.getVocab().clear();
@@ -144,10 +144,10 @@ public class WordCounter {
          */
 
         // Run the mini collection
-        WordCounter counterAll = new WordCounter(collectionDir);
+//        WordCounter counterAll = new WordCounter(collectionDir);
 
         // Uncomment the lines below to run for the Medical collection
-        //WordCounter counterAll = new WordCounter(fullCollectionDir);
+        WordCounter counterAll = new WordCounter(fullCollectionDir);
         long startTime = System.currentTimeMillis();
         try{
             counterAll.execute();
