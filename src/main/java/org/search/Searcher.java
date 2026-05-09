@@ -179,8 +179,10 @@ public class Searcher
 
                     if (type != null && !type.isEmpty()) {
                         if (!docData.path.toLowerCase().contains(type.toLowerCase())) {
-                            for (int p = 0; p < freqInDoc; p++) raf.readInt();
-                            continue;
+                            if (docData.path.contains("MiniCollection")){
+                                for (int p = 0; p < freqInDoc; p++) raf.readInt();
+                                continue;
+                            }
                         }
                     }
 
