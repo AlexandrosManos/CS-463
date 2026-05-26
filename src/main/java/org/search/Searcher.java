@@ -256,8 +256,12 @@ public class Searcher
 
     public void automatedEvaluation(String xmlPath, boolean summary)
     {
+        File outputDir = new File("results");
+        if (!outputDir.exists()) {
+            outputDir.mkdirs();
+        }
 
-        File outputFile = new File("results.txt");
+        File outputFile = new File(outputDir,"results.txt");
         String runName = "CS_463";
 
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
