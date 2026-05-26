@@ -93,12 +93,12 @@ public class IRQualityEvaluator {
                 }
 
                 double bpref = topic.Bpref();
-                // TODO Not implemented yet
-                double avepPrime = 0.0;
-                double ndcgPrime = 0.0;
+
+                double avep = topic.AveP();
+                double ndcg = topic.NDCG();
 
                 String line = String.format(java.util.Locale.US, "%d\t%.4f\t%.4f\t%.4f",
-                        topic.topicId, bpref, avepPrime, ndcgPrime);
+                        topic.topicId, bpref, avep, ndcg);
 
                 writer.write(line);
                 writer.newLine();
