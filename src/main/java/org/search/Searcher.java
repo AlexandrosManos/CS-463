@@ -254,36 +254,46 @@ public class Searcher
         System.out.println("=".repeat(120) + "\n");
     }
 
-    public void automatedEvaluation(String xmlPath, boolean summary) {
-        try {
+    public void automatedEvaluation(String xmlPath, boolean summary)
+    {
+
+        File outputFile = new File("results.txt");
+        String runName = "CS_463";
+
+        try (BufferedWriter writer = new BufferedWriter(new FileWriter(outputFile))) {
+            System.out.println("Starting batch evaluation... Writing to results_summary.txt");
             ArrayList<Topic> topics = TopicsReader.readTopics(xmlPath);
 
-            System.out.print("Topic evaluation using the ");
-            if(summary) {
-                System.out.println("summary");
-            }else{
-                System.out.println("description");
-            }
-
             for (Topic topic : topics) {
-                System.out.println();
-                System.out.println("Topic Number: " + topic.getNumber());
-                System.out.println("with type: " + topic.getType());
+                String topicNumber = String.valueOf(topic.getNumber());
 
-                String text;
-                if (summary) {
-                    text = topic.getSummary();
-                }else {
-                    text = topic.getDescription();
+                String text = summary ? topic.getSummary() : topic.getDescription();
+
+                List<ResultsData> results = vsmSeach(text, "");
+                int limit = Math.min(results.size(), 1000);
+
+                for (int i = 0; i < limit; i++) {
+                    ResultsData doc = results.get(i);
+
+                    String fullPath = doc.getPath();
+                    String pmcid = new File(fullPath).getName().replace(".nxml", "");
+
+                    double score = doc.score;
+
+                    int rank = i + 1;
+
+                    // FORMAT: TOPIC_NO Q0 PMCID RANK SCORE RUN_NAME
+                    writer.write(topicNumber + " Q0 " + pmcid + " " + rank + " " + String.format(Locale.US, "%.6f", score) + " " + runName);
+                    writer.newLine();
                 }
-
-                vsmSeach(text, "");
-
-                System.out.println("Results [" + topic.getNumber() + "]");
-                System.out.println("---");
+                System.out.println("Topic " + topicNumber + " processed (" + limit + " results written).");
             }
+
+            System.out.println("Successfully generated results_summary.txt!");
+
         } catch (Exception e) {
-            System.err.println("Error reading the file: " + e.getMessage());
+            System.err.println("Error during automated evaluation: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
