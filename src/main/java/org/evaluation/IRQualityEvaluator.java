@@ -1,6 +1,9 @@
 package org.evaluation;
 
 import java.io.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 public class IRQualityEvaluator {
 
@@ -109,6 +112,59 @@ public class IRQualityEvaluator {
         }
     }
 
+
+
+    public void printSummaryStatistics() {
+        List<Double> bprefScores = new ArrayList<>();
+        List<Double> avepScores = new ArrayList<>();
+        List<Double> ndcgScores = new ArrayList<>();
+
+        // Collect scores from valid topics
+        for (int i = 1; i <= 30; i++) {
+            TopicData topic = topics[i];
+            if (topic != null && !topic.qrels.isEmpty()) {
+                bprefScores.add(topic.Bpref());
+                avepScores.add(topic.AveP());
+                ndcgScores.add(topic.NDCG());
+            }
+        }
+
+        System.out.println();
+        System.out.println("               SUMMARY STATISTICS                 ");
+        System.out.printf("%-5s -> Mean: %.4f | Median: %.4f\n", "Bpref", mean(bprefScores), median(bprefScores));
+        System.out.printf("%-5s -> Mean: %.4f | Median: %.4f\n", "AveP", mean(avepScores), median(avepScores));
+        System.out.printf("%-5s -> Mean: %.4f | Median: %.4f\n", "NDCG", mean(ndcgScores), median(ndcgScores));
+    }
+
+    public static double mean(List<Double> scores) {
+        double sum = 0.0;
+        for (double num : scores) {
+            sum += num;
+        }
+        // Floor of the mean
+        return sum / scores.size();
+    }
+
+    public static double median(List<Double> scores) {
+
+        int n = scores.size();
+
+        // sorting function
+        Collections.sort(scores);
+        double result = 0;
+
+        // if there are two middle element
+        if (n % 2 == 0) {
+            result = (scores.get(n / 2 - 1) + scores.get(n / 2)) / 2.0;
+        }
+        // if there are only one middle element
+        else {
+            result = scores.get(n / 2);
+        }
+
+        return result;
+    }
+
     public static void main(String[] args) {
 
         IRQualityEvaluator evalSummary = new IRQualityEvaluator();
@@ -120,10 +176,13 @@ public class IRQualityEvaluator {
         String descFile = "results_description.txt";
         String qrelsFile = "dataset/qrels.txt";
 
+
         System.out.println("Evaluating Summary Results");
         evalSummary.loadRels(qrelsFile);
         evalSummary.loadResults(resultPath+summaryFile);
         evalSummary.fileExporter(resultPath+"eval_"+summaryFile);
+        System.out.println();
+        evalSummary.printSummaryStatistics();
         System.out.println("\n");
 
         System.out.println("Evaluating Description Results");
@@ -131,6 +190,6 @@ public class IRQualityEvaluator {
         evalDesc.loadResults(resultPath+descFile);
         evalDesc.fileExporter(resultPath+"eval_"+descFile);
 
-
+        evalDesc.printSummaryStatistics();
     }
 }
