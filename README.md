@@ -22,11 +22,3 @@ CS-463 Information Retrieval Systems (University of Crete, Spring 2026).
 | `org.search` | Query evaluation, snippets, OOV handling and the GUI |
 | `org.evaluation` | Evaluation metrics and plots |
 
-## Running
-Build the JARs from IntelliJ (*Build → Build Artifacts*), then:
-```bash
-java -jar PhaseA.jar              # build the index
-java -jar PhaseB_CLI.jar          # search from the terminal
-java -jar PhaseB_GUI.jar          # search with the GUI
-java -jar IRQualityEvaluator.jar  # evaluate against qrels.txt
-```
